@@ -102,7 +102,19 @@ static inline uint8_t read_adch(void)
 {
 	while (ADCSRA & _BV(ADSC))
 		;
+	/* result left aligned (8-bit in ADCH) => ADLAR = 1 */
+	ADMUX |= _BV(ADLAR);
 	return ADCH;
+}
+
+/* reads the 10 bits of the ADC once ready */
+static inline uint16_t read_adc(void)
+{
+	while (ADCSRA & _BV(ADSC))
+		;
+	/* result right aligned (10-bit in ADCH:ADCL) => ADLAR = 0 */
+	ADMUX &= ~_BV(ADLAR);
+	return ADCL + ((uint16_t)ADCH << 8);
 }
 
 /* The loop is pretty simple. It runs for roughly 20 ms, measures the 3
@@ -114,9 +126,9 @@ static inline uint8_t read_adch(void)
  */
 void loop(void)
 {
-	uint8_t p1; // Potentiometer 1 : offset
-	uint8_t p2; // Potentiometer 2 : speed
-	uint8_t p3; // Potentiometer 3 : amplitude
+	uint16_t p1; // Potentiometer 1 : offset
+	uint16_t p2; // Potentiometer 2 : speed
+	uint8_t  p3; // Potentiometer 3 : amplitude
 	uint16_t pw; // pulse_width
 
 	p1 = 0; p2 = 0; p3 = 0;
@@ -125,13 +137,13 @@ void loop(void)
 	set_adc_channel(1);
 	start_adc();
 	delay_us(6000);
-	p1 = read_adch();
+	p1 = read_adc();
 
 	/* start conversion for ADC2, wait 6 ms and read it */
 	set_adc_channel(2);
 	start_adc();
 	delay_us(6000);
-	p2 = read_adch();
+	p2 = read_adc();
 
 	/* start conversion for ADC3, wait 6 ms and read it */
 	set_adc_channel(3);
@@ -143,17 +155,17 @@ void loop(void)
 
 	/* the amplitude is 0..255. We multiply it by 4/256 before applying it
 	 * to the signed sine (-128..127) so that we have a -510..508 range
-	 * around 1500us. We then add the offset between -510..+508
+	 * around 1500us. We then add the offset between -1024..+1022
 	 */
 	pw =	1500 + // center
-		((int16_t)p1 << 3) - 512 + // offset: -512..+504
+		((int16_t)(p1 - 512) << 1) + // offset: -1024..+1022
 		(((int16_t)sin8(angle >> 8) * p3) >> 6); // current angle
 
 	/* we roughly perform this increment 50 times a second. This means that
 	 * a complete cycle will be done ~3 times per second this way at the
 	 * fastest speed.
 	 */
-	angle += (uint16_t)p2 << 4;
+	angle += (uint16_t)p2 << 2;
 	send_pulse(PB0, pw);
 
 	/* now we're around 18..22 ms */
@@ -178,8 +190,7 @@ void setup(void)
 	ADCSRA = _BV(ADEN) | _BV(ADPS1) | _BV(ADPS0);
 
 	/* ADC reference : Vcc => REFS0 = 0 */
-	/* result left shifted (8-bit in ADCH) => ADLAR = 1 */
-	ADMUX = _BV(ADLAR);
+	ADMUX = 0;
 }
 
 int main(void)
