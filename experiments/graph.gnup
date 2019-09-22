@@ -1,0 +1,22 @@
+set samples 1000
+set xtics 0.25 0.25
+set grid
+
+frac(x)=x-int(x)
+plot [0:2] frac(x)*4<2?frac(x)*4-1:3-frac(x)*4
+
+plot [0:2] sin(frac(x)*2*pi)
+
+sq(x)=x*x
+sin2(x)=x>=0.75?sq((x-0.75)*4)-1:0
+plot [0:2] sin(frac(x)*2*pi), sin2(frac(x))
+
+sin2(x)=x>=0.75?sq((x-0.75)*4)-1:x>=0.5?sq((0.75-x)*4)-1:0
+plot [0:2] sin(frac(x)*2*pi), sin2(frac(x))
+
+sin2(x)=x>=0.75?sq((x-0.75)*4)-1:x>=0.5?sq((0.75-x)*4)-1:x>=0.25?1-sq((x-0.25)*4):0
+plot [0:2] sin(frac(x)*2*pi), sin2(frac(x))
+
+sin2(x)=x>=0.75?sq((x-0.75)*4)-1:x>=0.5?sq((0.75-x)*4)-1:x>=0.25?1-sq((x-0.25)*4):1-sq((x-0.25)*4)
+plot [0:2] sin(frac(x)*2*pi), sin2(frac(x))
+
